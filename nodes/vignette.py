@@ -4,68 +4,40 @@ Vignette node for ComfyUI-Darkroom.
 Physically-based optical vignette simulation using the cos^4 law
 (natural light falloff) plus mechanical vignetting from lens barrel.
 
-Supports both darkening (natural) and brightening (anti-vignette for correction).
+Select a real lens profile or use Custom for manual control.
 """
 
 import numpy as np
 
+from ..data.lens_profiles import LENS_PROFILES_FLAT, LENS_PROFILE_NAMES
 from ..utils.image import tensor_to_numpy_batch, numpy_batch_to_tensor
 
 
-VIGNETTE_PRESETS = {
-    "Subtle": {"intensity": 0.3, "midpoint": 0.7, "roundness": 1.0, "feather": 0.5, "cos4": True},
-    "Standard": {"intensity": 0.5, "midpoint": 0.5, "roundness": 1.0, "feather": 0.4, "cos4": True},
-    "Heavy": {"intensity": 0.8, "midpoint": 0.4, "roundness": 1.0, "feather": 0.3, "cos4": True},
-    "Vintage Wide": {"intensity": 0.6, "midpoint": 0.35, "roundness": 0.8, "feather": 0.5, "cos4": False},
-    "Portrait Soft": {"intensity": 0.4, "midpoint": 0.6, "roundness": 1.0, "feather": 0.6, "cos4": True},
-    "Anamorphic": {"intensity": 0.5, "midpoint": 0.45, "roundness": 0.5, "feather": 0.4, "cos4": False},
-    "Custom": {"intensity": 0.5, "midpoint": 0.5, "roundness": 1.0, "feather": 0.4, "cos4": True},
-}
-
-PRESET_NAMES = list(VIGNETTE_PRESETS.keys())
+PRESET_NAMES = ["Custom"] + LENS_PROFILE_NAMES
 
 
 def _build_vignette_mask(h, w, midpoint, roundness, feather, use_cos4):
-    """
-    Build a vignette falloff mask.
-
-    midpoint: where falloff begins (0=center, 1=edge)
-    roundness: 1.0=circular, <1=elliptical (wider), >1=elliptical (taller)
-    feather: transition smoothness (0=hard, 1=very gradual)
-    use_cos4: apply cos^4 natural light falloff
-    """
+    """Build a vignette falloff mask."""
     cy, cx = h / 2.0, w / 2.0
 
     yy, xx = np.mgrid[0:h, 0:w].astype(np.float64)
-
-    # Normalized distance from center, accounting for aspect ratio and roundness
     dy = (yy - cy) / cy
     dx = (xx - cx) / cx
 
-    # Apply roundness (stretch one axis)
     if roundness != 1.0:
         dy = dy / max(roundness, 0.01)
 
-    # Radial distance [0..~1.4 at corners]
     r = np.sqrt(dx * dx + dy * dy)
 
     if use_cos4:
-        # Cos^4 law: I = I0 * cos^4(theta)
-        # theta = arctan(r * sensor_factor), approximate with r directly
-        # Softer, physically accurate falloff
         cos_theta = 1.0 / np.sqrt(1.0 + r * r)
         falloff = cos_theta ** 4
-        # Blend with midpoint control
-        mask = np.where(r < midpoint, 1.0, falloff)
-        # Smooth transition at midpoint
         transition = np.clip((r - midpoint * 0.8) / max(feather, 0.01), 0.0, 1.0)
         mask = 1.0 - transition * (1.0 - falloff)
     else:
-        # Simple radial falloff with feather
         inner = midpoint
-        outer = midpoint + feather * (1.414 - midpoint)  # extend to corners
+        outer = midpoint + feather * (1.414 - midpoint)
         mask = 1.0 - np.clip((r - inner) / max(outer - inner, 0.01), 0.0, 1.0)
-        # Smooth the transition with power curve
         mask = mask ** 1.5
 
     return mask.astype(np.float32)
@@ -78,9 +50,9 @@ class Vignette:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "preset": (PRESET_NAMES, {
-                    "default": "Standard",
-                    "tooltip": "Vignette preset. 'Custom' uses manual controls"
+                "lens": (PRESET_NAMES, {
+                    "default": "Custom",
+                    "tooltip": "Select a real lens or 'Custom' for manual vignette control"
                 }),
                 "intensity": ("FLOAT", {
                     "default": 0.5, "min": -1.0, "max": 1.0, "step": 0.05,
@@ -124,21 +96,20 @@ class Vignette:
     FUNCTION = "execute"
     CATEGORY = "AKURATE/Darkroom/Lens"
 
-    def execute(self, image, preset, intensity,
+    def execute(self, image, lens, intensity,
                 midpoint=0.5, roundness=1.0, feather=0.4, cos4_falloff=True,
                 tint_r=1.0, tint_g=1.0, tint_b=1.0):
 
         if abs(intensity) < 0.01:
             return (image,)
 
-        if preset != "Custom":
-            p = VIGNETTE_PRESETS[preset]
-            midpoint = p["midpoint"]
-            roundness = p["roundness"]
-            feather = p["feather"]
-            cos4_falloff = p["cos4"]
+        if lens != "Custom" and lens in LENS_PROFILES_FLAT:
+            p = LENS_PROFILES_FLAT[lens]
+            midpoint = p.vig_midpoint
+            # Use lens vignette strength as the base, modulated by intensity
+            intensity = intensity * (p.vig_strength / 0.5) if p.vig_strength > 0 else intensity
 
-        print(f"[Darkroom] Vignette: preset={preset}, intensity={intensity}, midpoint={midpoint}")
+        print(f"[Darkroom] Vignette: {lens}, intensity={intensity:.2f}, midpoint={midpoint:.2f}")
 
         arrays = tensor_to_numpy_batch(image)
         processed = []
@@ -147,20 +118,15 @@ class Vignette:
             h, w = img.shape[:2]
             mask = _build_vignette_mask(h, w, midpoint, roundness, feather, cos4_falloff)
 
-            # Apply intensity
             if intensity > 0:
-                # Darken: multiply by mask raised to intensity power
                 vignette = mask ** (intensity * 2)
             else:
-                # Anti-vignette: invert the effect (brighten edges)
                 vignette = 1.0 + (1.0 - mask) * abs(intensity)
 
-            # Apply per-channel with tint
             tint = np.array([tint_r, tint_g, tint_b], dtype=np.float32)
             result = img.copy()
             for c in range(3):
                 if intensity > 0:
-                    # Darken with tint shift in dark areas
                     channel_vignette = vignette * (1.0 + (tint[c] - 1.0) * (1.0 - mask))
                     result[..., c] = img[..., c] * channel_vignette
                 else:
