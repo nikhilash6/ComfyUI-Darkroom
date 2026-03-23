@@ -5,7 +5,8 @@ Comprehensive library of B&W film stocks including classic, modern,
 pushed processing, and specialty films.
 
 Spectral sensitivity coefficients derived from darktable's published data
-where available, estimated from known film characteristics for others.
+where available, refined with Capture One channel-mix data, estimated from
+known film characteristics for others.
 """
 
 from dataclasses import dataclass
@@ -40,13 +41,13 @@ def _bw(name, desc, r, g, b, toe, shoulder, slope, fog=0.015):
 BW_ILFORD = {
     "Ilford HP5 Plus 400": _bw(
         "Ilford HP5+", "Classic all-rounder. Medium contrast, versatile, pushable.",
-        0.253, 0.260, 0.487, 1.4, 1.5, 1.0, 0.02),
+        0.289, 0.347, 0.364, 1.4, 1.5, 1.0, 0.02),
     "Ilford HP5 Plus 400 - Pushed 1 Stop": _bw(
         "Ilford HP5+ Push 1", "HP5 pushed to 800. More contrast, deeper blacks.",
-        0.253, 0.260, 0.487, 1.3, 1.4, 1.12, 0.025),
+        0.289, 0.347, 0.364, 1.3, 1.4, 1.12, 0.025),
     "Ilford HP5 Plus 400 - Pushed 2 Stops": _bw(
         "Ilford HP5+ Push 2", "HP5 pushed to 1600. High contrast, gritty.",
-        0.253, 0.260, 0.487, 1.2, 1.3, 1.25, 0.03),
+        0.289, 0.347, 0.364, 1.2, 1.3, 1.25, 0.03),
     "Ilford FP4 Plus 125": _bw(
         "Ilford FP4+", "Fine grain, lower speed. Beautiful tonal rendering. Studio favorite.",
         0.241, 0.221, 0.537, 1.5, 1.6, 1.08, 0.01),
@@ -58,10 +59,10 @@ BW_ILFORD = {
         0.244, 0.236, 0.520, 1.4, 1.5, 1.02, 0.015),
     "Ilford Delta 3200": _bw(
         "Ilford Delta 3200", "Ultra-high speed. Visible grain, moody. Push to 6400+.",
-        0.244, 0.236, 0.520, 1.3, 1.4, 1.05, 0.025),
+        0.354, 0.373, 0.273, 1.3, 1.4, 1.05, 0.025),
     "Ilford PanF Plus 50": _bw(
         "Ilford PanF+", "Ultra fine grain. Extremely sharp. Needs good light.",
-        0.238, 0.225, 0.537, 1.55, 1.65, 1.1, 0.008),
+        0.46, 0.45, 0.09, 1.55, 1.65, 1.1, 0.008),
     "Ilford XP2 Super": _bw(
         "Ilford XP2 Super", "C-41 process B&W. Chromogenic, extremely fine grain, wide latitude.",
         0.25, 0.26, 0.49, 1.35, 1.65, 0.95, 0.01),
@@ -80,13 +81,16 @@ BW_ILFORD = {
 BW_KODAK = {
     "Kodak TRI-X 400": _bw(
         "Kodak Tri-X 400", "Legendary. High contrast, punchy midtones, street icon.",
-        0.30, 0.28, 0.42, 1.3, 1.4, 1.12, 0.02),
+        0.222, 0.433, 0.344, 1.3, 1.4, 1.12, 0.02),
     "Kodak TRI-X 400 - Pushed 1 Stop": _bw(
         "Kodak Tri-X Push 1", "Tri-X at 800. More contrast, deeper shadows.",
-        0.30, 0.28, 0.42, 1.2, 1.3, 1.22, 0.025),
+        0.222, 0.433, 0.344, 1.2, 1.3, 1.22, 0.025),
     "Kodak TRI-X 400 - Pushed 2 Stops": _bw(
         "Kodak Tri-X Push 2", "Tri-X at 1600. Classic photojournalism look. Very contrasty.",
-        0.30, 0.28, 0.42, 1.15, 1.25, 1.35, 0.03),
+        0.222, 0.433, 0.344, 1.15, 1.25, 1.35, 0.03),
+    "Kodak TRI-X 320": _bw(
+        "Kodak Tri-X 320", "Classic Tri-X in 320 speed. Slightly less contrasty than 400.",
+        0.40, 0.52, 0.08, 1.35, 1.45, 1.08, 0.02),
     "Kodak T-MAX 100": _bw(
         "Kodak T-MAX 100", "Tabular grain, extremely fine. Modern Kodak B&W benchmark.",
         0.27, 0.30, 0.43, 1.5, 1.55, 1.08, 0.01),
@@ -95,10 +99,10 @@ BW_KODAK = {
         0.27, 0.29, 0.44, 1.45, 1.5, 1.05, 0.015),
     "Kodak T-MAX P3200": _bw(
         "Kodak T-MAX P3200", "Ultra-high speed. Push to 6400-12800. Visible grain, night work.",
-        0.28, 0.28, 0.44, 1.25, 1.35, 1.1, 0.03),
+        0.17, 0.78, 0.05, 1.25, 1.35, 1.1, 0.03),
     "Kodak PLUS-X 125": _bw(
         "Kodak Plus-X 125", "Discontinued classic. Medium speed, beautiful tonality. Timeless.",
-        0.28, 0.27, 0.45, 1.45, 1.55, 1.05, 0.015),
+        0.316, 0.516, 0.168, 1.45, 1.55, 1.05, 0.015),
     "Kodak Panatomic-X": _bw(
         "Kodak Panatomic-X", "Extremely fine grain, very slow (32 ASA). Studio/macro work.",
         0.26, 0.26, 0.48, 1.55, 1.6, 1.08, 0.008),
@@ -119,7 +123,7 @@ BW_KODAK = {
         0.28, 0.28, 0.44, 2.5, 1.1, 1.8, 0.005),
     "Kodak BW400CN": _bw(
         "Kodak BW400CN", "C-41 chromogenic B&W. Fine grain, wide latitude, easy processing.",
-        0.27, 0.28, 0.45, 1.35, 1.6, 0.95, 0.015),
+        0.249, 0.670, 0.081, 1.35, 1.6, 0.95, 0.015),
     "Kodak HIE Infrared": _bw(
         "Kodak HIE Infrared", "Infrared film. Extreme red sensitivity, halation, surreal.",
         0.55, 0.25, 0.20, 1.4, 1.35, 1.15, 0.02),
@@ -138,10 +142,13 @@ BW_FUJI = {
         0.22, 0.31, 0.47, 1.5, 1.55, 1.05, 0.01),
     "Fuji Neopan 400": _bw(
         "Fuji Neopan 400", "Discontinued. Fine grain for 400. Clean, sharp, slightly cool.",
-        0.24, 0.30, 0.46, 1.42, 1.5, 1.03, 0.015),
+        0.368, 0.411, 0.221, 1.42, 1.5, 1.03, 0.015),
     "Fuji Neopan 1600": _bw(
         "Fuji Neopan 1600", "High-speed Fuji. Pronounced grain, good tonality for speed.",
-        0.26, 0.29, 0.45, 1.3, 1.4, 1.08, 0.025),
+        0.260, 0.462, 0.278, 1.3, 1.4, 1.08, 0.025),
+    "Fuji FP-3000b": _bw(
+        "Fuji FP-3000b", "Instant peel-apart B&W. High contrast, unique grain. Cult classic.",
+        0.372, 0.251, 0.377, 1.6, 1.3, 1.2, 0.02),
 }
 
 # =============================================================================
@@ -160,7 +167,7 @@ BW_AGFA = {
         0.26, 0.26, 0.48, 1.4, 1.48, 1.02, 0.018),
     "Agfa Scala 200": _bw(
         "Agfa Scala 200", "B&W reversal (slide) film. Direct positive, unique tonal range.",
-        0.25, 0.27, 0.48, 1.6, 1.4, 1.15, 0.008),
+        0.189, 0.411, 0.400, 1.6, 1.4, 1.15, 0.008),
 }
 
 # =============================================================================
