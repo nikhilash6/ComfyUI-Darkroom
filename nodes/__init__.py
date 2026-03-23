@@ -4,6 +4,11 @@ from .film_grain import NODE_CLASS_MAPPINGS as FG, NODE_DISPLAY_NAME_MAPPINGS as
 from .halation import NODE_CLASS_MAPPINGS as HAL, NODE_DISPLAY_NAME_MAPPINGS as HAL_N
 from .print_stock import NODE_CLASS_MAPPINGS as PS, NODE_DISPLAY_NAME_MAPPINGS as PS_N
 from .cross_process import NODE_CLASS_MAPPINGS as CP, NODE_DISPLAY_NAME_MAPPINGS as CP_N
+from .chromatic_aberration import NODE_CLASS_MAPPINGS as CA, NODE_DISPLAY_NAME_MAPPINGS as CA_N
+from .vignette import NODE_CLASS_MAPPINGS as VIG, NODE_DISPLAY_NAME_MAPPINGS as VIG_N
+from .lens_distortion import NODE_CLASS_MAPPINGS as LD, NODE_DISPLAY_NAME_MAPPINGS as LD_N
+from .perspective_correct import NODE_CLASS_MAPPINGS as PC, NODE_DISPLAY_NAME_MAPPINGS as PC_N
+from .lens_profile import NODE_CLASS_MAPPINGS as LP, NODE_DISPLAY_NAME_MAPPINGS as LP_N
 
-NODE_CLASS_MAPPINGS = {**FSC, **FSB, **FG, **HAL, **PS, **CP}
-NODE_DISPLAY_NAME_MAPPINGS = {**FSC_N, **FSB_N, **FG_N, **HAL_N, **PS_N, **CP_N}
+NODE_CLASS_MAPPINGS = {**FSC, **FSB, **FG, **HAL, **PS, **CP, **CA, **VIG, **LD, **PC, **LP}
+NODE_DISPLAY_NAME_MAPPINGS = {**FSC_N, **FSB_N, **FG_N, **HAL_N, **PS_N, **CP_N, **CA_N, **VIG_N, **LD_N, **PC_N, **LP_N}
