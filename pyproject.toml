@@ -9,6 +9,6 @@ dependencies = ["scipy>=1.10.0", "opensimplex>=0.4"]
 Repository = "https://github.com/jeremieLouvaert/ComfyUI-Darkroom"
 
 [tool.comfy]
-PublisherId = "jeremieLouvaert"
+PublisherId = "akurate"
 DisplayName = "ComfyUI Darkroom"
 Icon = ""
