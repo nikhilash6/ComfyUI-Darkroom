@@ -15,6 +15,9 @@ from .hsl_selective import NODE_CLASS_MAPPINGS as HSL, NODE_DISPLAY_NAME_MAPPING
 from .clarity_texture_dehaze import NODE_CLASS_MAPPINGS as CTD, NODE_DISPLAY_NAME_MAPPINGS as CTD_N
 from .vibrance import NODE_CLASS_MAPPINGS as VIB, NODE_DISPLAY_NAME_MAPPINGS as VIB_N
 from .sharpening_pro import NODE_CLASS_MAPPINGS as SP, NODE_DISPLAY_NAME_MAPPINGS as SP_N
+from .noise_reduction import NODE_CLASS_MAPPINGS as NR, NODE_DISPLAY_NAME_MAPPINGS as NR_N
+from .skin_tone_uniformity import NODE_CLASS_MAPPINGS as STU, NODE_DISPLAY_NAME_MAPPINGS as STU_N
+from .color_qualifier import NODE_CLASS_MAPPINGS as CQ, NODE_DISPLAY_NAME_MAPPINGS as CQ_N
 
-NODE_CLASS_MAPPINGS = {**FSC, **FSB, **FG, **HAL, **PS, **CP, **CA, **VIG, **LD, **PC, **LP, **WB, **ET, **HSL, **CTD, **VIB, **SP}
-NODE_DISPLAY_NAME_MAPPINGS = {**FSC_N, **FSB_N, **FG_N, **HAL_N, **PS_N, **CP_N, **CA_N, **VIG_N, **LD_N, **PC_N, **LP_N, **WB_N, **ET_N, **HSL_N, **CTD_N, **VIB_N, **SP_N}
+NODE_CLASS_MAPPINGS = {**FSC, **FSB, **FG, **HAL, **PS, **CP, **CA, **VIG, **LD, **PC, **LP, **WB, **ET, **HSL, **CTD, **VIB, **SP, **NR, **STU, **CQ}
+NODE_DISPLAY_NAME_MAPPINGS = {**FSC_N, **FSB_N, **FG_N, **HAL_N, **PS_N, **CP_N, **CA_N, **VIG_N, **LD_N, **PC_N, **LP_N, **WB_N, **ET_N, **HSL_N, **CTD_N, **VIB_N, **SP_N, **NR_N, **STU_N, **CQ_N}
