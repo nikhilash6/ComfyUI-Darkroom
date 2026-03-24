@@ -305,7 +305,7 @@ COLOR_SLIDE = {
         sat=1.0, s_tint=(0.0, 0.0, 0.0), h_tint=(0.0, 0.0, 0.0)),
     "Slide / Fuji Fortia SP": _stock(
         "Fuji Fortia SP", "Ultra-vivid slide. Even more saturated than Velvia. Extreme landscape film.",
-        2.27, 1.0, 1.56,
+        2.27, 1.0, 1.56, r_off=(0.10, 0.0, 0.04), b_off=(-0.05, 0.0, -0.02),
         sat=1.05, s_tint=(0.0, 0.0, 0.0), h_tint=(0.0, 0.0, 0.0)),
 
     # --- KODAK EKTACHROME ---
@@ -509,7 +509,7 @@ COLOR_INSTANT = {
         sat=0.80, s_tint=(0.015, 0.008, -0.008), h_tint=(0.012, 0.008, -0.003)),
     "Instant / Polaroid 665": _stock(
         "Polaroid 665", "Peel-apart B&W positive/negative. Fine grain, beautiful tones. Legendary.",
-        1.5, 1.5, 1.0,
+        1.5, 1.5, 1.0, r_off=(0.01, 0.0, 0.005), b_off=(-0.01, 0.0, -0.005),
         sat=1.0, s_tint=(0.0, 0.0, 0.0), h_tint=(0.0, 0.0, 0.0)),
     "Instant / Polaroid 669": _stock(
         "Polaroid 669", "Peel-apart color. Muted, creamy, soft. Transfer art staple.",

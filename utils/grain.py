@@ -17,9 +17,14 @@ def _generate_simplex_grain(height, width, iso, seed):
     """Generate multi-octave simplex noise grain. Higher quality, slower."""
     noise_gen = OpenSimplex(seed=seed)
 
+    # Scale grain frequency relative to image size so grain looks consistent
+    # across resolutions. Reference: 1024px on the long edge.
+    ref_size = 1024.0
+    size_scale = max(height, width) / ref_size
+
     # ISO controls base frequency: higher ISO = coarser grain = lower frequency
     # Lower frequency noise = larger grain structures
-    base_freq = 0.8 / (1.0 + (iso / 200.0))
+    base_freq = (0.8 / (1.0 + (iso / 200.0))) / size_scale
 
     # 3 octaves with decreasing amplitude
     octave_configs = [
@@ -49,9 +54,14 @@ def _generate_fallback_grain(height, width, iso, seed):
     """Generate grain using numpy random + gaussian blur. Fast fallback."""
     rng = np.random.RandomState(seed)
 
+    # Scale blur sigma relative to image size so grain looks consistent
+    # across resolutions. Reference: 1024px on the long edge.
+    ref_size = 1024.0
+    size_scale = max(height, width) / ref_size
+
     # ISO affects blur sigma: higher ISO = less blur = larger apparent grain
     # (less blur means more high-frequency noise survives, looking coarser)
-    base_sigma = max(0.4, 1.5 * (100.0 / max(iso, 50)))
+    base_sigma = max(0.4, 1.5 * (100.0 / max(iso, 50))) * size_scale
 
     # 3 octaves
     grain = np.zeros((height, width), dtype=np.float32)

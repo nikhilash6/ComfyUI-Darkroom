@@ -21,7 +21,7 @@ class FilmStockColor:
             "required": {
                 "image": ("IMAGE",),
                 "film_stock": (COLOR_STOCK_NAMES, {
-                    "default": "Kodak Portra 400",
+                    "default": "Neg / Kodak Portra 400",
                     "tooltip": "Select a film stock to emulate"
                 }),
                 "strength": ("FLOAT", {

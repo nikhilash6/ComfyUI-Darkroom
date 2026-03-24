@@ -18,7 +18,7 @@ class FilmStockBW:
             "required": {
                 "image": ("IMAGE",),
                 "film_stock": (BW_STOCK_NAMES, {
-                    "default": "Ilford HP5+",
+                    "default": "Ilford HP5 Plus 400",
                     "tooltip": "B&W film stock. Each has unique spectral sensitivity"
                 }),
                 "color_filter": (FILTER_NAMES, {
