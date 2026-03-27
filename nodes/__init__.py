@@ -18,6 +18,16 @@ from .sharpening_pro import NODE_CLASS_MAPPINGS as SP, NODE_DISPLAY_NAME_MAPPING
 from .noise_reduction import NODE_CLASS_MAPPINGS as NR, NODE_DISPLAY_NAME_MAPPINGS as NR_N
 from .skin_tone_uniformity import NODE_CLASS_MAPPINGS as STU, NODE_DISPLAY_NAME_MAPPINGS as STU_N
 from .color_qualifier import NODE_CLASS_MAPPINGS as CQ, NODE_DISPLAY_NAME_MAPPINGS as CQ_N
+# Wave 3: Color Grading
+from .tone_curve import NODE_CLASS_MAPPINGS as TC, NODE_DISPLAY_NAME_MAPPINGS as TC_N
+from .lift_gamma_gain import NODE_CLASS_MAPPINGS as LGG, NODE_DISPLAY_NAME_MAPPINGS as LGG_N
+from .log_wheels import NODE_CLASS_MAPPINGS as LW, NODE_DISPLAY_NAME_MAPPINGS as LW_N
+from .three_way_color_balance import NODE_CLASS_MAPPINGS as TWCB, NODE_DISPLAY_NAME_MAPPINGS as TWCB_N
+from .hue_vs_hue import NODE_CLASS_MAPPINGS as HVH, NODE_DISPLAY_NAME_MAPPINGS as HVH_N
+from .hue_vs_sat import NODE_CLASS_MAPPINGS as HVS, NODE_DISPLAY_NAME_MAPPINGS as HVS_N
+from .lum_vs_sat import NODE_CLASS_MAPPINGS as LVS, NODE_DISPLAY_NAME_MAPPINGS as LVS_N
+from .sat_vs_sat import NODE_CLASS_MAPPINGS as SVS, NODE_DISPLAY_NAME_MAPPINGS as SVS_N
+from .color_warper import NODE_CLASS_MAPPINGS as CW, NODE_DISPLAY_NAME_MAPPINGS as CW_N
 
-NODE_CLASS_MAPPINGS = {**FSC, **FSB, **FG, **HAL, **PS, **CP, **CA, **VIG, **LD, **PC, **LP, **WB, **ET, **HSL, **CTD, **VIB, **SP, **NR, **STU, **CQ}
-NODE_DISPLAY_NAME_MAPPINGS = {**FSC_N, **FSB_N, **FG_N, **HAL_N, **PS_N, **CP_N, **CA_N, **VIG_N, **LD_N, **PC_N, **LP_N, **WB_N, **ET_N, **HSL_N, **CTD_N, **VIB_N, **SP_N, **NR_N, **STU_N, **CQ_N}
+NODE_CLASS_MAPPINGS = {**FSC, **FSB, **FG, **HAL, **PS, **CP, **CA, **VIG, **LD, **PC, **LP, **WB, **ET, **HSL, **CTD, **VIB, **SP, **NR, **STU, **CQ, **TC, **LGG, **LW, **TWCB, **HVH, **HVS, **LVS, **SVS, **CW}
+NODE_DISPLAY_NAME_MAPPINGS = {**FSC_N, **FSB_N, **FG_N, **HAL_N, **PS_N, **CP_N, **CA_N, **VIG_N, **LD_N, **PC_N, **LP_N, **WB_N, **ET_N, **HSL_N, **CTD_N, **VIB_N, **SP_N, **NR_N, **STU_N, **CQ_N, **TC_N, **LGG_N, **LW_N, **TWCB_N, **HVH_N, **HVS_N, **LVS_N, **SVS_N, **CW_N}
