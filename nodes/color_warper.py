@@ -1,27 +1,17 @@
 """
 Color Warper node for ComfyUI-Darkroom.
 2D hue+saturation region warping with multi-region presets.
+
+GPU-accelerated via torch. No CPU roundtrip.
 """
 
-import numpy as np
+import torch
 
-from ..utils.color import srgb_to_linear, linear_to_srgb, blend
-from ..utils.image import tensor_to_numpy_batch, numpy_batch_to_tensor
-from ..utils.raw import rgb_to_hsl, hsl_to_rgb
-from ..utils.grading import hue_range_mask
+from ..utils.torch_ops import (
+    srgb_to_linear, linear_to_srgb, rgb_to_hsl, hsl_to_rgb,
+    hue_range_mask, sat_range_weight, blend,
+)
 from ..data.grading_presets import COLOR_WARPER_PRESETS, COLOR_WARPER_PRESET_NAMES
-
-
-def _sat_range_weight(sat, sat_min, sat_max, softness=0.1):
-    """
-    Smooth saturation range mask. 1.0 inside [sat_min, sat_max], smooth falloff outside.
-    """
-    soft = max(softness, 0.01)
-    # Smooth step at low end
-    low_weight = np.clip((sat - sat_min + soft) / (2.0 * soft), 0.0, 1.0)
-    # Smooth step at high end
-    high_weight = np.clip((sat_max + soft - sat) / (2.0 * soft), 0.0, 1.0)
-    return (low_weight * high_weight).astype(np.float32)
 
 
 class ColorWarper:
@@ -82,21 +72,16 @@ class ColorWarper:
 
     def _apply_region(self, h, s, l, src_hue, src_hue_width, src_sat_min, src_sat_max,
                       hue_shift, sat_shift, feather):
-        """Apply a single warping region to HSL data."""
-        # Combined hue + saturation mask
+        """Apply a single warping region to HSL data (torch tensors)."""
         h_mask = hue_range_mask(h, src_hue, width=src_hue_width, softness=feather)
-        s_mask = _sat_range_weight(s, src_sat_min, src_sat_max, softness=0.05 + feather * 0.1)
+        s_mask = sat_range_weight(s, src_sat_min, src_sat_max, softness=0.05 + feather * 0.1)
         combined_mask = h_mask * s_mask
 
-        # Apply hue shift
         if abs(hue_shift) > 0.1:
-            h = h + combined_mask * hue_shift
-            h = h % 360.0
+            h = (h + combined_mask * hue_shift) % 360.0
 
-        # Apply saturation shift
         if abs(sat_shift) > 0.5:
-            s = s * (1.0 + combined_mask * (sat_shift / 100.0))
-            s = np.clip(s, 0.0, 1.0)
+            s = (s * (1.0 + combined_mask * (sat_shift / 100.0))).clamp(0.0, 1.0)
 
         return h, s
 
@@ -109,26 +94,24 @@ class ColorWarper:
         if strength <= 0.0:
             return (image,)
 
-        # Build region list
         use_preset = preset != "Custom (manual)" and preset in COLOR_WARPER_PRESETS
 
         if not use_preset:
-            # Check manual controls
             if abs(hue_shift) < 0.1 and abs(sat_shift) < 0.5:
                 return (image,)
 
         print(f"[Darkroom] Color Warper: preset={preset}, strength={strength}")
 
-        images = tensor_to_numpy_batch(image)
+        batch_size = image.shape[0]
         results = []
 
-        for img in images:
-            original = img.copy()
+        for i in range(batch_size):
+            img = image[i]  # (H, W, C) stays on device
+            original = img.clone()
             linear = srgb_to_linear(img)
             h, s, l = rgb_to_hsl(linear)
 
             if use_preset:
-                # Apply all regions from preset
                 p = COLOR_WARPER_PRESETS[preset]
                 for region in p.regions:
                     h, s = self._apply_region(
@@ -139,7 +122,6 @@ class ColorWarper:
                         feather
                     )
 
-                # Also apply manual shift on top if active
                 if abs(hue_shift) > 0.1 or abs(sat_shift) > 0.5:
                     h, s = self._apply_region(
                         h, s, l,
@@ -149,7 +131,6 @@ class ColorWarper:
                         feather
                     )
             else:
-                # Manual single-region mode
                 h, s = self._apply_region(
                     h, s, l,
                     source_hue, source_hue_width,
@@ -162,7 +143,7 @@ class ColorWarper:
             result = linear_to_srgb(result)
             results.append(blend(original, result, strength))
 
-        return (numpy_batch_to_tensor(results),)
+        return (torch.stack(results, dim=0),)
 
 
 NODE_CLASS_MAPPINGS = {"DarkroomColorWarper": ColorWarper}
