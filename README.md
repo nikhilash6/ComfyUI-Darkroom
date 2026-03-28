@@ -88,4 +88,4 @@ MIT
 
 ## Author
 
-Jeremie Louvaert — [AKURATE.STUDIO](https://akurate.studio)
+Jeremie Louvaert — [jeremielouvaert.com](https://jeremielouvaert.com)
