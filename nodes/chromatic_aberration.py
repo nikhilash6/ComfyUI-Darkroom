@@ -1,17 +1,19 @@
 """
 Chromatic Aberration node for ComfyUI-Darkroom.
 
-Simulates lateral chromatic aberration — the color fringing caused by a lens
+Simulates lateral chromatic aberration -- the color fringing caused by a lens
 failing to focus all wavelengths to the same point.
 
 Select a real lens profile or use Custom for manual control.
+
+GPU-accelerated via torch. No CPU roundtrip.
 """
 
-import numpy as np
-from scipy.ndimage import map_coordinates
+import math
+import torch
 
 from ..data.lens_profiles import LENS_PROFILES_FLAT, LENS_PROFILE_NAMES
-from ..utils.image import tensor_to_numpy_batch, numpy_batch_to_tensor
+from ..utils.torch_ops import pixel_to_grid_coords, grid_sample_channel
 
 
 PRESET_NAMES = ["Custom"] + LENS_PROFILE_NAMES
@@ -19,35 +21,37 @@ PRESET_NAMES = ["Custom"] + LENS_PROFILE_NAMES
 
 def _apply_lateral_ca(img, shift_r, shift_b):
     """
-    Apply lateral CA by radially scaling R and B channels.
+    Apply lateral CA by radially scaling R and B channels on GPU.
     Green channel stays fixed (reference). Shift in pixels at the image edge.
+    img: (H, W, C) tensor on device.
     """
     h, w = img.shape[:2]
     cy, cx = h / 2.0, w / 2.0
-    max_r = np.sqrt(cx * cx + cy * cy)
+    max_r = math.sqrt(cx * cx + cy * cy)
+    device = img.device
 
-    yy, xx = np.mgrid[0:h, 0:w].astype(np.float64)
+    yy = torch.arange(h, dtype=torch.float32, device=device)
+    xx = torch.arange(w, dtype=torch.float32, device=device)
+    yy, xx = torch.meshgrid(yy, xx, indexing='ij')
     dy = yy - cy
     dx = xx - cx
-    r = np.sqrt(dy * dy + dx * dx) / max_r
+    r = torch.sqrt(dy * dy + dx * dx) / max_r
 
-    result = np.empty_like(img)
+    result = img.clone()
 
     for c, shift in enumerate([shift_r, 0.0, shift_b]):
         if abs(shift) < 0.01:
-            result[..., c] = img[..., c]
             continue
 
         scale = 1.0 + (shift / max_r) * r
         new_y = cy + dy * scale
         new_x = cx + dx * scale
 
-        result[..., c] = map_coordinates(
-            img[..., c], [new_y, new_x],
-            order=3, mode='reflect'
-        ).astype(np.float32)
+        grid = pixel_to_grid_coords(new_y, new_x, h, w)
+        result[..., c] = grid_sample_channel(img[..., c], grid,
+                                             padding_mode='reflection')
 
-    return np.clip(result, 0.0, 1.0).astype(np.float32)
+    return result.clamp(0.0, 1.0)
 
 
 class ChromaticAberration:
@@ -92,20 +96,18 @@ class ChromaticAberration:
             shift_r = p.ca_r
             shift_b = p.ca_b
 
-        arrays = tensor_to_numpy_batch(image)
-        processed = []
-
-        for img in arrays:
+        results = []
+        for i in range(image.shape[0]):
+            img = image[i]
             h, w = img.shape[:2]
             scale = min(h, w) / 1024.0
             sr = shift_r * strength * scale
             sb = shift_b * strength * scale
 
             print(f"[Darkroom] Chromatic Aberration: {lens}, shift_r={sr:.2f}px, shift_b={sb:.2f}px")
-            result = _apply_lateral_ca(img, sr, sb)
-            processed.append(result)
+            results.append(_apply_lateral_ca(img, sr, sb))
 
-        return (numpy_batch_to_tensor(processed),)
+        return (torch.stack(results, dim=0),)
 
 
 NODE_CLASS_MAPPINGS = {

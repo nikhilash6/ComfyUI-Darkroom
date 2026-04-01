@@ -242,3 +242,32 @@ def sat_range_weight(sat, sat_min, sat_max, softness=0.1):
     low_weight = ((sat - sat_min + soft) / (2.0 * soft)).clamp(0.0, 1.0)
     high_weight = ((sat_max + soft - sat) / (2.0 * soft)).clamp(0.0, 1.0)
     return low_weight * high_weight
+
+
+# ---------------------------------------------------------------------------
+# Grid sampling (replaces scipy.ndimage.map_coordinates for lens ops)
+# ---------------------------------------------------------------------------
+
+def pixel_to_grid_coords(src_y, src_x, h, w):
+    """
+    Convert source pixel coordinates to F.grid_sample normalized [-1, 1] coords.
+    src_y, src_x: (H, W) tensors of source pixel positions.
+    Returns: (H, W, 2) grid tensor (x, y order as grid_sample expects).
+    With align_corners=True: -1 maps to pixel 0, +1 maps to pixel (size-1).
+    """
+    gx = 2.0 * src_x / (w - 1) - 1.0
+    gy = 2.0 * src_y / (h - 1) - 1.0
+    return torch.stack([gx, gy], dim=-1)
+
+
+def grid_sample_channel(channel, grid, padding_mode='reflection'):
+    """
+    Grid-sample a single (H, W) channel using a (H, W, 2) normalized grid.
+    Uses bicubic interpolation (matches scipy map_coordinates order=3).
+    Returns: (H, W) tensor.
+    """
+    inp = channel.unsqueeze(0).unsqueeze(0)   # (1, 1, H, W)
+    g = grid.unsqueeze(0)                      # (1, H, W, 2)
+    out = F.grid_sample(inp, g, mode='bicubic', padding_mode=padding_mode,
+                        align_corners=True)
+    return out.squeeze(0).squeeze(0)

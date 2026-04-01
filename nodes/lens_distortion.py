@@ -5,13 +5,15 @@ Simulates barrel distortion (wide-angle), pincushion distortion (telephoto),
 and mustache/complex distortion. Uses the Brown-Conrady distortion model.
 
 Select a real lens profile or use Custom for manual control.
+
+GPU-accelerated via torch. No CPU roundtrip.
 """
 
-import numpy as np
-from scipy.ndimage import map_coordinates
+import torch
+import torch.nn.functional as F
 
 from ..data.lens_profiles import LENS_PROFILES_FLAT, LENS_PROFILE_NAMES
-from ..utils.image import tensor_to_numpy_batch, numpy_batch_to_tensor
+from ..utils.torch_ops import pixel_to_grid_coords
 
 
 PRESET_NAMES = ["Custom"] + LENS_PROFILE_NAMES
@@ -19,13 +21,18 @@ PRESET_NAMES = ["Custom"] + LENS_PROFILE_NAMES
 
 def _apply_distortion(img, k1, k2):
     """
-    Apply Brown-Conrady radial distortion.
+    Apply Brown-Conrady radial distortion on GPU.
     r_distorted = r * (1 + k1*r^2 + k2*r^4)
+    img: (H, W, C) tensor on device.
     """
     h, w = img.shape[:2]
     cy, cx = h / 2.0, w / 2.0
+    device = img.device
 
-    yy, xx = np.mgrid[0:h, 0:w].astype(np.float64)
+    yy = torch.arange(h, dtype=torch.float32, device=device)
+    xx = torch.arange(w, dtype=torch.float32, device=device)
+    yy, xx = torch.meshgrid(yy, xx, indexing='ij')
+
     ny = (yy - cy) / cy
     nx = (xx - cx) / cx
 
@@ -36,14 +43,14 @@ def _apply_distortion(img, k1, k2):
     src_x = nx * distort * cx + cx
     src_y = ny * distort * cy + cy
 
-    result = np.empty_like(img)
-    for c in range(img.shape[2]):
-        result[..., c] = map_coordinates(
-            img[..., c], [src_y, src_x],
-            order=3, mode='constant', cval=0.0
-        ).astype(np.float32)
+    grid = pixel_to_grid_coords(src_y, src_x, h, w)
 
-    return np.clip(result, 0.0, 1.0).astype(np.float32)
+    # Same grid for all channels -- single grid_sample call
+    inp = img.permute(2, 0, 1).unsqueeze(0)       # (1, C, H, W)
+    g = grid.unsqueeze(0)                           # (1, H, W, 2)
+    out = F.grid_sample(inp, g, mode='bicubic', padding_mode='zeros',
+                        align_corners=True)
+    return out.squeeze(0).permute(1, 2, 0).clamp(0.0, 1.0)
 
 
 class LensDistortion:
@@ -93,10 +100,11 @@ class LensDistortion:
 
         print(f"[Darkroom] Lens Distortion: {lens}, k1={k1:.4f}, k2={k2:.4f}")
 
-        arrays = tensor_to_numpy_batch(image)
-        processed = [_apply_distortion(img, k1, k2) for img in arrays]
+        results = []
+        for i in range(image.shape[0]):
+            results.append(_apply_distortion(image[i], k1, k2))
 
-        return (numpy_batch_to_tensor(processed),)
+        return (torch.stack(results, dim=0),)
 
 
 NODE_CLASS_MAPPINGS = {
