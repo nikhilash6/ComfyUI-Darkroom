@@ -1,8 +1,8 @@
 # ComfyUI-Darkroom
 
-Professional color grading and film emulation suite for ComfyUI — 29 nodes, 161 film stocks, 102 lens profiles, zero API costs.
+Professional color grading and film emulation suite for ComfyUI — 34 nodes, 161 film stocks, 102 lens profiles, zero API costs.
 
-The most complete color toolset in the ComfyUI ecosystem. From physics-based film emulation to DaVinci Resolve-level color grading, Camera Raw processing, and optical simulation — everything runs locally with no external dependencies.
+The most complete color toolset in the ComfyUI ecosystem. From physics-based film emulation to DaVinci Resolve-level color grading, Camera Raw processing, optical simulation, LUT export, and ACES color management — everything runs locally with no external dependencies.
 
 ## Nodes
 
@@ -55,6 +55,16 @@ The most complete color toolset in the ComfyUI ecosystem. From physics-based fil
 | **Perspective Correct** | Keystone and trapezoid correction for architectural shots. |
 | **Lens Profile** | All-in-one lens correction — distortion + CA + vignette from 102 real lens models (Canon, Nikon, Sony, Zeiss, Leica, vintage). |
 
+### Pipeline — LUT & Color Management (5 nodes)
+
+| Node | Description |
+|------|-------------|
+| **LUT Identity Generator** | Outputs a neutral identity lattice image. Connect your Darkroom grading chain after this, then feed into LUT Export to bake a .cube file. Sizes: 17, 33, 65. |
+| **LUT Export (.cube)** | Bakes any Darkroom processing chain into a standard .cube 3D LUT file. Works in DaVinci Resolve, Premiere Pro, Photoshop, Capture One, FCPX — any tool that supports 3D LUTs. |
+| **LUT Apply (.cube)** | Loads and applies any .cube 3D LUT with trilinear interpolation. Import looks from DaVinci Resolve, download creative LUTs, or reuse exported Darkroom grades. Strength slider for blending. |
+| **Color Space Transform** | Convert between sRGB, Linear sRGB, ACEScg, ACEScct, Rec.2020, and DCI-P3. The only ACES-aware color management in ComfyUI. Soft gamut compression option. |
+| **ACES Tonemap** | Industry-standard tonemapping: ACES Filmic, ACES Fitted (Hill), AgX (Blender), Reinhard, Filmic (Uncharted 2). Exposure bias, ACES gamut conversion, white point control. |
+
 ## Installation
 
 ```bash
@@ -63,7 +73,7 @@ git clone https://github.com/jeremieLouvaert/ComfyUI-Darkroom.git
 pip install -r ComfyUI-Darkroom/requirements.txt
 ```
 
-Restart ComfyUI. All 29 nodes appear under **AKURATE/Darkroom/** with subcategories: Film, Raw, Grading, Lens.
+Restart ComfyUI. All 34 nodes appear under **AKURATE/Darkroom/** with subcategories: Film, Raw, Grading, Lens, Pipeline.
 
 ### Dependencies
 
