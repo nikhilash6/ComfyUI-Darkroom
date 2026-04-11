@@ -36,6 +36,9 @@ from .lut_bake_inject import NODE_CLASS_MAPPINGS as LBI, NODE_DISPLAY_NAME_MAPPI
 from .lut_bake_extract import NODE_CLASS_MAPPINGS as LBE, NODE_DISPLAY_NAME_MAPPINGS as LBE_N
 from .color_space_transform import NODE_CLASS_MAPPINGS as CST, NODE_DISPLAY_NAME_MAPPINGS as CST_N
 from .aces_tonemap import NODE_CLASS_MAPPINGS as AT, NODE_DISPLAY_NAME_MAPPINGS as AT_N
+# Wave 6: RAW Pipeline
+from .raw_load import NODE_CLASS_MAPPINGS as RL, NODE_DISPLAY_NAME_MAPPINGS as RL_N
+from .raw_metadata_split import NODE_CLASS_MAPPINGS as RMS, NODE_DISPLAY_NAME_MAPPINGS as RMS_N
 
-NODE_CLASS_MAPPINGS = {**FSC, **FSB, **FG, **HAL, **PS, **CP, **CA, **VIG, **LD, **PC, **LP, **WB, **ET, **HSL, **CTD, **VIB, **SP, **NR, **STU, **CQ, **TC, **LGG, **LW, **TWCB, **HVH, **HVS, **LVS, **SVS, **CW, **LI, **LE, **LA, **LBI, **LBE, **CST, **AT}
-NODE_DISPLAY_NAME_MAPPINGS = {**FSC_N, **FSB_N, **FG_N, **HAL_N, **PS_N, **CP_N, **CA_N, **VIG_N, **LD_N, **PC_N, **LP_N, **WB_N, **ET_N, **HSL_N, **CTD_N, **VIB_N, **SP_N, **NR_N, **STU_N, **CQ_N, **TC_N, **LGG_N, **LW_N, **TWCB_N, **HVH_N, **HVS_N, **LVS_N, **SVS_N, **CW_N, **LI_N, **LE_N, **LA_N, **LBI_N, **LBE_N, **CST_N, **AT_N}
+NODE_CLASS_MAPPINGS = {**FSC, **FSB, **FG, **HAL, **PS, **CP, **CA, **VIG, **LD, **PC, **LP, **WB, **ET, **HSL, **CTD, **VIB, **SP, **NR, **STU, **CQ, **TC, **LGG, **LW, **TWCB, **HVH, **HVS, **LVS, **SVS, **CW, **LI, **LE, **LA, **LBI, **LBE, **CST, **AT, **RL, **RMS}
+NODE_DISPLAY_NAME_MAPPINGS = {**FSC_N, **FSB_N, **FG_N, **HAL_N, **PS_N, **CP_N, **CA_N, **VIG_N, **LD_N, **PC_N, **LP_N, **WB_N, **ET_N, **HSL_N, **CTD_N, **VIB_N, **SP_N, **NR_N, **STU_N, **CQ_N, **TC_N, **LGG_N, **LW_N, **TWCB_N, **HVH_N, **HVS_N, **LVS_N, **SVS_N, **CW_N, **LI_N, **LE_N, **LA_N, **LBI_N, **LBE_N, **CST_N, **AT_N, **RL_N, **RMS_N}

@@ -402,6 +402,20 @@ function attachBrowseButton(node, widgetName, buttonLabel, pickerOptions) {
     });
 }
 
+const RAW_EXTENSIONS = [
+    ".cr3", ".cr2", ".crw",
+    ".nef", ".nrw",
+    ".arw", ".sr2", ".srf",
+    ".raf",
+    ".rw2", ".raw",
+    ".dng", ".rwl",
+    ".3fr", ".fff",
+    ".orf",
+    ".pef", ".ptx",
+    ".x3f",
+    ".iiq", ".mos", ".eip",
+];
+
 app.registerExtension({
     name: "Darkroom.PathPicker",
     async beforeRegisterNodeDef(nodeType, nodeData, _app) {
@@ -424,6 +438,18 @@ app.registerExtension({
                     mode: "file",
                     extensions: [".cube"],
                     title: "Choose .cube LUT file",
+                    selectLabel: "Select this file",
+                });
+                return r;
+            };
+        } else if (nodeData.name === "DarkroomRAWLoad") {
+            const orig = nodeType.prototype.onNodeCreated;
+            nodeType.prototype.onNodeCreated = function () {
+                const r = orig?.apply(this, arguments);
+                attachBrowseButton(this, "raw_file", "Browse for RAW file...", {
+                    mode: "file",
+                    extensions: RAW_EXTENSIONS,
+                    title: "Choose camera RAW file",
                     selectLabel: "Select this file",
                 });
                 return r;
