@@ -1,6 +1,6 @@
 # ComfyUI-Darkroom
 
-Professional color grading and film emulation suite for ComfyUI — 34 nodes, 161 film stocks, 102 lens profiles, zero API costs.
+Professional color grading and film emulation suite for ComfyUI — 36 nodes, 161 film stocks, 102 lens profiles, zero API costs.
 
 The most complete color toolset in the ComfyUI ecosystem. From physics-based film emulation to DaVinci Resolve-level color grading, Camera Raw processing, optical simulation, LUT export, and ACES color management — everything runs locally with no external dependencies.
 
@@ -55,15 +55,53 @@ The most complete color toolset in the ComfyUI ecosystem. From physics-based fil
 | **Perspective Correct** | Keystone and trapezoid correction for architectural shots. |
 | **Lens Profile** | All-in-one lens correction — distortion + CA + vignette from 102 real lens models (Canon, Nikon, Sony, Zeiss, Leica, vintage). |
 
-### Pipeline — LUT & Color Management (5 nodes)
+### Pipeline — LUT & Color Management (7 nodes)
 
 | Node | Description |
 |------|-------------|
-| **LUT Identity Generator** | Outputs a neutral identity lattice image. Connect your Darkroom grading chain after this, then feed into LUT Export to bake a .cube file. Sizes: 17, 33, 65. |
+| **LUT Identity Generator** | Outputs a neutral identity lattice image. Feed into LUT Bake Inject to grade your photo and bake a .cube at the same time. Sizes: 17, 33, 65. |
+| **LUT Bake Inject** | Pairs your photo with the identity lattice as a 2-image batch. The grading chain then processes both with identical settings — no node duplication. |
+| **LUT Bake Extract** | Splits the batch back out after the grading chain: graded photo to preview, graded lattice to LUT Export. |
 | **LUT Export (.cube)** | Bakes any Darkroom processing chain into a standard .cube 3D LUT file. Works in DaVinci Resolve, Premiere Pro, Photoshop, Capture One, FCPX — any tool that supports 3D LUTs. |
 | **LUT Apply (.cube)** | Loads and applies any .cube 3D LUT with trilinear interpolation. Import looks from DaVinci Resolve, download creative LUTs, or reuse exported Darkroom grades. Strength slider for blending. |
 | **Color Space Transform** | Convert between sRGB, Linear sRGB, ACEScg, ACEScct, Rec.2020, and DCI-P3. The only ACES-aware color management in ComfyUI. Soft gamut compression option. |
 | **ACES Tonemap** | Industry-standard tonemapping: ACES Filmic, ACES Fitted (Hill), AgX (Blender), Reinhard, Filmic (Uncharted 2). Exposure bias, ACES gamut conversion, white point control. |
+
+## LUT Bake Workflow — grade your photo and export a .cube in one pass
+
+Building a LUT in Darkroom used to mean running the grading chain twice — once on your photo, once on an identity lattice — with settings duplicated across two parallel chains. That's tedious and error-prone. The **LUT Bake Inject / Extract** pair fixes that: one chain, one set of settings, your photo and the LUT come out the other side together.
+
+**How it works:** Inject pads your photo and the identity lattice to a shared canvas and stacks them as a 2-image batch. Every Darkroom color node iterates the batch dimension and applies the exact same transform to both images. After the chain, Extract splits the batch back into the graded photo and the processed lattice — the lattice goes to LUT Export.
+
+**Wiring:**
+
+```
+Load Image ──► photo ─────┐
+                          ├─► LUT Bake Inject ─► [grading chain] ─► LUT Bake Extract ─► graded_photo  ──► Preview
+LUT Identity ─► lattice ──┤                                                        ├─► graded_lattice ─► LUT Export
+                          └─► lut_size ─────────────────────────────────────────── └─► lut_size       ─┘
+```
+
+- Connect **LUT Identity Generator → identity_lattice** input of **LUT Bake Inject**.
+- Connect your **Load Image → photo** input of **LUT Bake Inject**.
+- Run any **color-only** Darkroom nodes between Inject and Extract — Tone Curve, Lift Gamma Gain, HSL Selective, Film Stock, Hue vs X, Color Warper, etc.
+- **LUT Bake Extract** gives you three outputs: `graded_photo` (to Preview / Save Image), `graded_lattice` (to LUT Export's `processed_lattice`), and `lut_size` (to LUT Export's `lut_size`).
+
+### Color-only rule — what can go in the chain
+
+A 3D LUT is a per-pixel color lookup. It has no idea about neighboring pixels. So only nodes that transform each pixel independently can be baked:
+
+**Allowed in the bake chain:**
+Film Stock (Color), Film Stock (B&W), Print Stock, Cross Process, White Balance, Exposure & Tone, HSL Selective, Vibrance, Tone Curve, Lift Gamma Gain, Log Wheels, 3-Way Color Balance, Hue vs Hue, Hue vs Sat, Lum vs Sat, Sat vs Sat, Color Warper, Color Space Transform, ACES Tonemap, LUT Apply.
+
+**NOT allowed in the bake chain** (they use pixel neighborhoods and will corrupt the lattice):
+Film Grain, Halation, Clarity / Texture / Dehaze, Sharpening Pro, Noise Reduction, Skin Tone Uniformity, Color Qualifier (partial — uses local masks), Chromatic Aberration, Vignette, Lens Distortion, Perspective Correct, Lens Profile.
+
+If you want spatial effects on your final image, apply them to `graded_photo` **after** Extract, not inside the bake chain.
+
+### Example workflow
+
+A ready-to-use example is in [`workflows/lut_bake_and_apply.json`](workflows/lut_bake_and_apply.json). Drag it into ComfyUI, load a photo, and press Queue Prompt — you'll get a graded preview and a `.cube` file in `output/luts/`.
 
 ## Installation
 
@@ -73,7 +111,7 @@ git clone https://github.com/jeremieLouvaert/ComfyUI-Darkroom.git
 pip install -r ComfyUI-Darkroom/requirements.txt
 ```
 
-Restart ComfyUI. All 34 nodes appear under **AKURATE/Darkroom/** with subcategories: Film, Raw, Grading, Lens, Pipeline.
+Restart ComfyUI. All 36 nodes appear under **AKURATE/Darkroom/** with subcategories: Film, Raw, Grading, Lens, Pipeline.
 
 ### Dependencies
 
