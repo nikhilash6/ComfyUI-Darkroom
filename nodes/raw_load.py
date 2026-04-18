@@ -8,8 +8,10 @@ import os
 
 import torch
 
+from ..utils.dcp import list_brands_with_looks, list_all_look_variants
 from ..utils.raw_loader import (
-    load_raw,
+    decode_raw_linear,
+    apply_post_processing,
     DEMOSAIC_OPTIONS,
     COLORSPACE_OPTIONS,
     HIGHLIGHT_OPTIONS,
@@ -22,8 +24,14 @@ OUTPUT_MODE_OPTIONS = ["sRGB display", "Linear scene"]
 
 class DarkroomRAWLoad:
 
-    # Simple in-process decode cache — RAW decode is expensive (10s+ on a 100MP file).
-    _cache = {}
+    # Two-stage cache. _decode_cache holds the expensive rawpy output keyed
+    # only on parameters that affect the decode itself (11 s on a 51 MP GFX
+    # 50S). _final_cache holds the post-processed image keyed on everything
+    # including DCP/exposure/output_mode. Changing just camera_look or
+    # baseline_exposure hits _decode_cache (cheap replay, ~2 s) instead of
+    # re-running rawpy (~11 s).
+    _decode_cache = {}
+    _final_cache = {}
     _cache_max = 4
 
     @classmethod
@@ -67,11 +75,38 @@ class DarkroomRAWLoad:
                                "Linear scene = pure linear HDR for ACES pipelines."
                 }),
                 "baseline_exposure": ("FLOAT", {
-                    "default": 0.0, "min": -4.0, "max": 4.0, "step": 0.1,
-                    "tooltip": "Extra exposure offset in stops, applied in linear space before the default "
-                               "tone curve and sRGB encoding. The default is 0 — the baked-in Camera Raw-like "
-                               "tone curve already lifts midtones to match ACR's default view. Use this to "
-                               "brighten or darken from that starting point. Ignored when output_mode is Linear scene."
+                    "default": 0.0, "min": -4.0, "max": 8.0, "step": 0.1,
+                    "tooltip": "Exposure offset in stops, applied in linear light before any downstream "
+                               "stage. In sRGB display mode: brightens or darkens from the ACR-matched "
+                               "default view (default 0). In Linear scene mode: needed to lift the pure "
+                               "scene-referred linear output into the range expected by downstream LUTs. "
+                               "rawpy's linear decode lands typical midtones near 0.05; most Camera Raw-"
+                               "calibrated LUTs (abpy's Fuji sims, Sowerby's) expect midtones near 0.18. "
+                               "+2 EV is a good starting point for a daylight scene; push higher for "
+                               "darker scenes."
+                }),
+                "camera_look": (["(not used)"] + list_all_look_variants(), {
+                    "default": "(not used)",
+                    "tooltip": "The specific look within the chosen brand (e.g. 'Standard', "
+                               "'Landscape', 'Vivid', 'VELVIA'). Narrows automatically when "
+                               "camera_brand changes. Shows '(not used)' when camera_brand is "
+                               "'Adobe Standard' — the variant is ignored in that case."
+                }),
+                "camera_brand": (list_brands_with_looks(), {
+                    "default": "Adobe Standard",
+                    "tooltip": "Camera brand for the Camera Look profile. 'Adobe Standard' is the "
+                               "neutral per-body calibration (hue/sat corrections only) and is the "
+                               "default for all bodies. Pick a brand to unlock that brand's Camera "
+                               "Looks in the camera_look dropdown below."
+                               "\n\n"
+                               "Drop .dcp packs into ComfyUI/models/camera_profiles/<Make Model>/ "
+                               "(e.g. '.../camera_profiles/Fujifilm X-T5/Fujifilm X-T5 Camera VELVIA.dcp'). "
+                               "Adobe ships Camera Looks for Canon/Nikon/Sony/Panasonic if Camera Raw "
+                               "or Lightroom is installed on the same machine. For Fuji film sims, "
+                               "install a third-party pack (e.g. Stuart Sowerby)."
+                               "\n\n"
+                               "If the selected brand + look isn't installed for the detected body, "
+                               "the node falls back to Adobe Standard and logs a warning."
                 }),
             },
         }
@@ -83,56 +118,88 @@ class DarkroomRAWLoad:
 
     def execute(self, raw_file, demosaic, output_colorspace,
                 white_balance, highlight_mode, half_size, output_mode,
-                baseline_exposure=0.0):
+                baseline_exposure=0.0, camera_look="", camera_brand="Adobe Standard"):
         raw_file = (raw_file or "").strip().replace("\\", "/")
         if not raw_file:
             raise ValueError("[Darkroom RAW Load] no file path provided")
         if not os.path.isfile(raw_file):
             raise FileNotFoundError(f"[Darkroom RAW Load] file not found: {raw_file}")
 
-        # Defensive: saved workflows from earlier node versions may pass None
-        # or a missing value for the baseline_exposure widget.
         if baseline_exposure is None:
             baseline_exposure = 0.0
         baseline_exposure = float(baseline_exposure)
+        camera_brand = (camera_brand or "Adobe Standard").strip()
+        camera_look = (camera_look or "").strip()
+
+        # Combine brand + variant into the canonical "Brand / Look" string the
+        # resolver expects. Legacy values (a bare "Brand / Look" already sitting
+        # in camera_look from an older saved workflow) pass through untouched.
+        if camera_brand == "Adobe Standard" or camera_look in ("", "(not used)"):
+            look_spec = "Adobe Standard"
+        elif " / " in camera_look:
+            look_spec = camera_look
+        else:
+            look_spec = f"{camera_brand} / {camera_look}"
 
         mtime = os.path.getmtime(raw_file)
-        key = (raw_file, mtime, demosaic, output_mode, output_colorspace,
-               white_balance, highlight_mode, bool(half_size),
-               round(baseline_exposure, 3))
+        decode_key = (raw_file, mtime, demosaic, output_colorspace,
+                      white_balance, highlight_mode, bool(half_size))
+        final_key = decode_key + (output_mode, round(baseline_exposure, 3), look_spec)
 
-        cached = DarkroomRAWLoad._cache.get(key)
-        if cached is not None:
-            img, meta = cached
-            print(f"[Darkroom RAW Load] cache hit: {os.path.basename(raw_file)}")
+        cached_final = DarkroomRAWLoad._final_cache.get(final_key)
+        if cached_final is not None:
+            img, meta = cached_final
+            print(f"[Darkroom RAW Load] final cache hit: {os.path.basename(raw_file)} "
+                  f"(look={look_spec}, ev={baseline_exposure:+.1f})")
         else:
-            print(f"[Darkroom RAW Load] decoding {os.path.basename(raw_file)} "
-                  f"(mode={output_mode}, exposure={baseline_exposure:+.1f}EV, "
-                  f"demosaic={demosaic}, wb={white_balance}, half={half_size})")
-            img, meta = load_raw(
-                raw_file,
-                demosaic=demosaic,
-                colorspace=output_colorspace,
-                white_balance=white_balance,
-                highlight_mode=highlight_mode,
+            cached_decode = DarkroomRAWLoad._decode_cache.get(decode_key)
+            if cached_decode is not None:
+                img_linear, meta_base = cached_decode
+                print(f"[Darkroom RAW Load] decode cache hit "
+                      f"({os.path.basename(raw_file)}); replaying post-processing "
+                      f"(mode={output_mode}, ev={baseline_exposure:+.1f}, look={look_spec})")
+            else:
+                print(f"[Darkroom RAW Load] decoding {os.path.basename(raw_file)} "
+                      f"(demosaic={demosaic}, wb={white_balance}, half={half_size})")
+                img_linear, meta_base = decode_raw_linear(
+                    raw_file,
+                    demosaic=demosaic,
+                    colorspace=output_colorspace,
+                    white_balance=white_balance,
+                    highlight_mode=highlight_mode,
+                    half_size=half_size,
+                )
+                DarkroomRAWLoad._decode_cache[decode_key] = (img_linear, meta_base)
+                _trim_cache(DarkroomRAWLoad._decode_cache, DarkroomRAWLoad._cache_max)
+
+                sensor = meta_base.get("sensor_type", "?")
+                model = meta_base.get("camera_model", "?")
+                print(f"[Darkroom RAW Load] decoded: {model} "
+                      f"{meta_base['image_width']}x{meta_base['image_height']} ({sensor})")
+                if meta_base.get("film_simulation"):
+                    print(f"[Darkroom RAW Load] film sim: {meta_base['film_simulation']}")
+
+            # meta is mutated by apply_post_processing (dcp_profile / dcp_look),
+            # so hand it a fresh copy each time — otherwise a later cache replay
+            # with a different look would surface stale fields.
+            meta = dict(meta_base)
+            img, meta = apply_post_processing(
+                img_linear, meta,
                 output_mode=output_mode,
                 baseline_exposure=baseline_exposure,
-                half_size=half_size,
+                camera_look=look_spec,
             )
-            DarkroomRAWLoad._cache[key] = (img, meta)
-            if len(DarkroomRAWLoad._cache) > DarkroomRAWLoad._cache_max:
-                oldest = next(iter(DarkroomRAWLoad._cache))
-                del DarkroomRAWLoad._cache[oldest]
-
-            sensor = meta.get("sensor_type", "?")
-            model = meta.get("camera_model", "?")
-            print(f"[Darkroom RAW Load] decoded: {model} "
-                  f"{meta['image_width']}x{meta['image_height']} ({sensor})")
-            if meta.get("film_simulation"):
-                print(f"[Darkroom RAW Load] film sim: {meta['film_simulation']}")
+            DarkroomRAWLoad._final_cache[final_key] = (img, meta)
+            _trim_cache(DarkroomRAWLoad._final_cache, DarkroomRAWLoad._cache_max)
 
         tensor = torch.from_numpy(img).unsqueeze(0).contiguous()
         return (tensor, meta)
+
+
+def _trim_cache(cache, max_size):
+    while len(cache) > max_size:
+        oldest = next(iter(cache))
+        del cache[oldest]
 
 
 NODE_CLASS_MAPPINGS = {"DarkroomRAWLoad": DarkroomRAWLoad}
