@@ -88,6 +88,16 @@ python tools/build_fuji_dcps.py \
 
 The `tools/build_fuji_dcps.py` script splices abpy's per-sim LookTable + ToneCurve onto your body's Adobe Standard base matrices and writes 8 DCPs (Provia / Velvia / Astia / Classic Chrome / Pro Neg Hi / Pro Neg Std / Eterna / Reala Ace) that drop directly into the `camera_look` dropdown. Repeat for each body you shoot with. Classic Neg / Nostalgic Neg / Bleach Bypass ship as `.cube` LUTs only in abpy and can be used via the LUT Apply node.
 
+**B&W sims (Acros / Monochrome + R/Y/G filter variants):** abpy deliberately skips Fuji's black-and-white simulations because Fuji's B&W rendering is a channel-mix plus tone curve that DCP's HSV-based LookTable expresses awkwardly, so there's no public pack. Darkroom ships a separate builder, `tools/build_fuji_bw_dcps.py`, that synthesizes the B&W look tables from published Neopan 100 Acros channel weights (for Acros) and BT.709 luma (for Monochrome), with Wratten 8 / 11 / 25 filter transmissions pre-multiplied for the +Y / +G / +R variants. This is Darkroom's approximation, not a calibrated 1:1 match to Fuji's in-camera output. Usage mirrors the color builder:
+
+```bash
+python tools/build_fuji_bw_dcps.py \
+  --body "Fujifilm X-T5" \
+  --out  "ComfyUI/models/camera_profiles/Fujifilm X-T5"
+```
+
+Writes 8 DCPs per body: Acros, Acros+R, Acros+Y, Acros+G, Monochrome, Monochrome+R, Monochrome+Y, Monochrome+G. Runs without the abpy checkout (the B&W tables are synthesized, not spliced).
+
 If the selected Camera Look isn't available for the detected body, the node silently falls back to Adobe Standard and logs a console warning.
 
 ### Pipeline — LUT & Color Management (7 nodes)
