@@ -8,6 +8,7 @@ from scipy.ndimage import gaussian_filter, minimum_filter
 
 from ..utils.color import luminance_rec709, blend
 from ..utils.image import tensor_to_numpy_batch, numpy_batch_to_tensor
+from ..data.ai_mitigation_presets import AI_MITIGATION_CTD, CTD_PRESET_NAMES
 
 
 class ClarityTextureDehaze:
@@ -35,6 +36,10 @@ class ClarityTextureDehaze:
                     "default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05,
                     "tooltip": "Blend between original (0) and adjusted (1)"
                 }),
+                "preset": (CTD_PRESET_NAMES, {
+                    "default": "Custom (manual)",
+                    "tooltip": "AI Mitigation presets stack with HSL Selective preset of the same tier. Manual sliders add on top"
+                }),
             }
         }
 
@@ -43,7 +48,14 @@ class ClarityTextureDehaze:
     FUNCTION = "execute"
     CATEGORY = "AKURATE/Darkroom/Raw"
 
-    def execute(self, image, clarity=0.0, texture=0.0, dehaze=0.0, strength=1.0):
+    def execute(self, image, clarity=0.0, texture=0.0, dehaze=0.0, strength=1.0,
+                preset="Custom (manual)"):
+        if preset != "Custom (manual)" and preset in AI_MITIGATION_CTD:
+            p = AI_MITIGATION_CTD[preset]
+            clarity = clarity + p.clarity
+            texture = texture + p.texture
+            dehaze = dehaze + p.dehaze
+
         if strength <= 0.0 or (abs(clarity) < 0.5 and abs(texture) < 0.5 and abs(dehaze) < 0.5):
             return (image,)
 

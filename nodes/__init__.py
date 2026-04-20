@@ -39,6 +39,18 @@ from .aces_tonemap import NODE_CLASS_MAPPINGS as AT, NODE_DISPLAY_NAME_MAPPINGS 
 # Wave 6: RAW Pipeline
 from .raw_load import NODE_CLASS_MAPPINGS as RL, NODE_DISPLAY_NAME_MAPPINGS as RL_N
 from .raw_metadata_split import NODE_CLASS_MAPPINGS as RMS, NODE_DISPLAY_NAME_MAPPINGS as RMS_N
+# Wave 7: Spectral Film (datasheet-derived neg x print LUTs)
+from .spectral_film_stock import NODE_CLASS_MAPPINGS as SFS, NODE_DISPLAY_NAME_MAPPINGS as SFS_N
+# Scopes: colorist analysis tools
+from .histogram import NODE_CLASS_MAPPINGS as HIST, NODE_DISPLAY_NAME_MAPPINGS as HIST_N
+from .vectorscope import NODE_CLASS_MAPPINGS as VEC, NODE_DISPLAY_NAME_MAPPINGS as VEC_N
+# Grading: reference-driven color matching
+from .color_match import NODE_CLASS_MAPPINGS as CM, NODE_DISPLAY_NAME_MAPPINGS as CM_N
+# Print: CMYK workflow
+from .cmyk_softproof import NODE_CLASS_MAPPINGS as KSP, NODE_DISPLAY_NAME_MAPPINGS as KSP_N
+from .cmyk_gamut_warning import NODE_CLASS_MAPPINGS as KGW, NODE_DISPLAY_NAME_MAPPINGS as KGW_N
+from .cmyk_tac_check import NODE_CLASS_MAPPINGS as KTC, NODE_DISPLAY_NAME_MAPPINGS as KTC_N
+from .cmyk_export import NODE_CLASS_MAPPINGS as KEX, NODE_DISPLAY_NAME_MAPPINGS as KEX_N
 
-NODE_CLASS_MAPPINGS = {**FSC, **FSB, **FG, **HAL, **PS, **CP, **CA, **VIG, **LD, **PC, **LP, **WB, **ET, **HSL, **CTD, **VIB, **SP, **NR, **STU, **CQ, **TC, **LGG, **LW, **TWCB, **HVH, **HVS, **LVS, **SVS, **CW, **LI, **LE, **LA, **LBI, **LBE, **CST, **AT, **RL, **RMS}
-NODE_DISPLAY_NAME_MAPPINGS = {**FSC_N, **FSB_N, **FG_N, **HAL_N, **PS_N, **CP_N, **CA_N, **VIG_N, **LD_N, **PC_N, **LP_N, **WB_N, **ET_N, **HSL_N, **CTD_N, **VIB_N, **SP_N, **NR_N, **STU_N, **CQ_N, **TC_N, **LGG_N, **LW_N, **TWCB_N, **HVH_N, **HVS_N, **LVS_N, **SVS_N, **CW_N, **LI_N, **LE_N, **LA_N, **LBI_N, **LBE_N, **CST_N, **AT_N, **RL_N, **RMS_N}
+NODE_CLASS_MAPPINGS = {**FSC, **FSB, **FG, **HAL, **PS, **CP, **CA, **VIG, **LD, **PC, **LP, **WB, **ET, **HSL, **CTD, **VIB, **SP, **NR, **STU, **CQ, **TC, **LGG, **LW, **TWCB, **HVH, **HVS, **LVS, **SVS, **CW, **LI, **LE, **LA, **LBI, **LBE, **CST, **AT, **RL, **RMS, **SFS, **HIST, **VEC, **CM, **KSP, **KGW, **KTC, **KEX}
+NODE_DISPLAY_NAME_MAPPINGS = {**FSC_N, **FSB_N, **FG_N, **HAL_N, **PS_N, **CP_N, **CA_N, **VIG_N, **LD_N, **PC_N, **LP_N, **WB_N, **ET_N, **HSL_N, **CTD_N, **VIB_N, **SP_N, **NR_N, **STU_N, **CQ_N, **TC_N, **LGG_N, **LW_N, **TWCB_N, **HVH_N, **HVS_N, **LVS_N, **SVS_N, **CW_N, **LI_N, **LE_N, **LA_N, **LBI_N, **LBE_N, **CST_N, **AT_N, **RL_N, **RMS_N, **SFS_N, **HIST_N, **VEC_N, **CM_N, **KSP_N, **KGW_N, **KTC_N, **KEX_N}

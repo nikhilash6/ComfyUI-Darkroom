@@ -5,9 +5,12 @@ Per-hue adjustments to Hue, Saturation, and Luminance with smooth feathered tran
 
 import numpy as np
 
+from dataclasses import asdict
+
 from ..utils.color import srgb_to_linear, linear_to_srgb, blend
 from ..utils.image import tensor_to_numpy_batch, numpy_batch_to_tensor
 from ..utils.raw import rgb_to_hsl, hsl_to_rgb
+from ..data.ai_mitigation_presets import AI_MITIGATION_HSL, HSL_PRESET_NAMES
 
 
 # Hue centers in degrees for each range
@@ -68,6 +71,10 @@ class HSLSelective:
             "default": 1.0, "min": 0.0, "max": 1.0, "step": 0.05,
             "tooltip": "Blend between original (0) and adjusted (1)"
         })
+        optional["preset"] = (HSL_PRESET_NAMES, {
+            "default": "Custom (manual)",
+            "tooltip": "AI Mitigation presets pair with Clarity/Texture/Dehaze preset of the same tier. Manual sliders add on top"
+        })
 
         return {"required": sliders, "optional": optional}
 
@@ -76,9 +83,14 @@ class HSLSelective:
     FUNCTION = "execute"
     CATEGORY = "AKURATE/Darkroom/Raw"
 
-    def execute(self, image, strength=1.0, **kwargs):
+    def execute(self, image, strength=1.0, preset="Custom (manual)", **kwargs):
         if strength <= 0.0:
             return (image,)
+
+        if preset != "Custom (manual)" and preset in AI_MITIGATION_HSL:
+            for k, v in asdict(AI_MITIGATION_HSL[preset]).items():
+                if abs(v) > 0.01:
+                    kwargs[k] = kwargs.get(k, 0.0) + v
 
         # Collect active adjustments
         adjustments = []

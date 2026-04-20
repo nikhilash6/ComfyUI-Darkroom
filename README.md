@@ -1,8 +1,8 @@
 # ComfyUI-Darkroom
 
-Professional color grading and film emulation suite for ComfyUI — 36 nodes, 161 film stocks, 102 lens profiles, zero API costs.
+Professional color grading and film emulation suite for ComfyUI — 46 nodes, 161 film stocks, 35 spectral neg×print LUTs, 102 lens profiles, reference-driven Color Match, colorist scopes, full CMYK print workflow, zero API costs.
 
-The most complete color toolset in the ComfyUI ecosystem. From physics-based film emulation to DaVinci Resolve-level color grading, Camera Raw processing, optical simulation, LUT export, and ACES color management — everything runs locally with no external dependencies.
+The most complete color toolset in the ComfyUI ecosystem. From physics-based film emulation to DaVinci Resolve-level color grading, Camera Raw processing, optical simulation, LUT export, ACES color management, and magazine-ready CMYK print output — everything runs locally with no external dependencies.
 
 ## Nodes
 
@@ -100,6 +100,40 @@ Writes 8 DCPs per body: Acros, Acros+R, Acros+Y, Acros+G, Monochrome, Monochrome
 
 If the selected Camera Look isn't available for the detected body, the node silently falls back to Adobe Standard and logs a console warning.
 
+### Spectral Film Stock (1 node, 35 presets)
+
+| Node | Description |
+|------|-------------|
+| **Spectral Film Stock** | Pre-baked `.cube` LUTs derived from full negative→print spectral simulation. Each preset encodes scene-light → spectral sensitivity → log exposure → H&D density → dye spectral density → printer light → print density → sRGB. Shipped presets cover C41 still (Portra 160/400/800, Ektar 100, Gold 200, Ultramax, Fuji Pro 160C/160S/400H, Superia Reala / X-Tra 400, Natura 1600, Vericolor III on Endura / Supra / Portra Endura / Fuji Crystal Archive papers), Cinema (Vision3 50D/200T/250D/500T on 2383 / 2393), Reversal slides (Velvia 50, Provia 100F, Ektachrome 100D, Kodachrome 64 on Ilfochrome / Ektachrome Radiance III), Instant (FP-100C, Instax Color on Fujiflex), Niche (Aerocolor, Aerocolor High, Agfa Vista 100), B&W (Tri-X 400, Kodak 5222 on Polymax grades). |
+
+The baker is vendored at `third_party/spectral_film_lut/` (MIT, JanLohse/spectral_film_lut), stripped to the headless engine. Run `python tools/bake_spectral_luts.py --all` to regenerate or extend; bake takes ~13 s for all 35 LUTs. See `tools/bake_spectral_luts.py` for the preset registry — add your own `_cat(...)` entries for extra neg×print combos and rebake.
+
+### Scopes (2 nodes)
+
+| Node | Description |
+|------|-------------|
+| **Histogram** | Per-channel R/G/B / Luma / single-channel histogram with 0/25/50/75/100% graticule and clip-warning stripes on the edges. Log-scale toggle for highlight-dominant images. Output is IMAGE — wire to PreviewImage. |
+| **Vectorscope** | Rec.709 YCbCr density plot with 75% + 100% saturation rings, six primary target boxes (R/Yl/G/Cy/B/Mg), the 123° skin-tone line (I-line), configurable gain (zoom into low-sat scenes) and log-scale density. Cold-to-warm heatmap. |
+
+### Reference-driven Color Match (1 node)
+
+| Node | Description |
+|------|-------------|
+| **Color Match (Reference)** | Grade a target image toward a reference's colour distribution. Four LAB-space methods in one dropdown: **reinhard** (mean/std transfer, fast safe default), **wasserstein** (sliced optimal transport via iterative advection, handles multi-modal distributions), **forgy** (K-means palette matching with Gaussian-weighted soft assignment, sklearn), **kantorovich** (closed-form Gaussian linear transport, requires `pip install POT`). Intensity blend + per-method tuning (n_colors, n_slices, sample_size, seed). Algorithms adapted from [rajawski/gradia](https://github.com/rajawski/gradia) (MIT). |
+
+### CMYK Print Workflow (4 nodes)
+
+| Node | Description |
+|------|-------------|
+| **CMYK Soft-Proof** | RGB → target CMYK → RGB roundtrip preview. Image stays in RGB for continued editing, the colour shift you see is what will happen on press. |
+| **CMYK Gamut Warning** | Overlays pixels that cannot be accurately reproduced by the chosen print condition (threshold configurable). Logs out-of-gamut percentage. |
+| **CMYK TAC Check** | Converts to CMYK and flags pixels where C+M+Y+K exceeds the TAC (Total Area Coverage) limit. Presets: 330% coated / 300% uncoated / 300% web coated / 240% newsprint / custom. Prevents ink-drying and show-through problems before the file ships. |
+| **CMYK Export TIFF** | Writes a 4-channel CMYK TIFF with ICC profile embedded. LZW-compressed, configurable DPI, defaults to `ComfyUI/output/cmyk/`. This is the file you send to the printer. |
+
+**ICC profile discovery:** The CMYK nodes auto-discover profiles from (1) `ComfyUI-Darkroom/data/icc_profiles/` for user drops, and (2) the OS colour-profile store. On Windows you already have FOGRA39 (ISO Coated v2), FOGRA27, FOGRA29 (uncoated), GRACoL 2006, US Web Coated SWOP v2, SWOP 2006 Grade 3/5, Euroscale Coated/Uncoated, SNAP 2007 newsprint, JapanColor 2001/2002 — all bundled by Windows at `C:\Windows\System32\spool\drivers\color\`. Additional free profiles are available from [ECI](https://www.eci.org/doku.php?id=en:downloads) (FOGRA51 / PSO Coated v3 / PSO Uncoated v3 / ISO Newspaper 26v4).
+
+**Rendering intents:** perceptual for photos (default), relative colorimetric for logos and corporate, saturation for charts, absolute colorimetric for pre-press proofing simulation.
+
 ### Pipeline — LUT & Color Management (7 nodes)
 
 | Node | Description |
@@ -156,14 +190,18 @@ git clone https://github.com/jeremieLouvaert/ComfyUI-Darkroom.git
 pip install -r ComfyUI-Darkroom/requirements.txt
 ```
 
-Restart ComfyUI. All 38 nodes appear under **AKURATE/Darkroom/** with subcategories: Film, Raw, Grading, Lens, Pipeline, RAW.
+Restart ComfyUI. All 46 nodes appear under **AKURATE/Darkroom/** with subcategories: Film (incl. Spectral), Raw, Grading (incl. Color Match), Lens, Pipeline, RAW, Scopes, Print.
 
 ### Dependencies
 
 - **scipy** (>= 1.10.0) — spline interpolation, Gaussian filters, FFT convolution
 - **opensimplex** (>= 0.4) — high-quality simplex noise for film grain
 
-No API keys. No GPU required. Pure numpy/scipy computation.
+Optional:
+- **POT** (`pip install POT`) — enables the Kantorovich method on Color Match. Reinhard / Wasserstein / Forgy all work without it.
+- **colour-science** + **numba** — only required to *regenerate* Spectral Film Stock LUTs via `tools/bake_spectral_luts.py`. Consumers who install via Comfy Registry or git clone receive the pre-baked LUTs and never run the baker.
+
+No API keys. No GPU required. Pure numpy/scipy computation (Histogram + Vectorscope render via PIL, CMYK nodes use PIL.ImageCms / LittleCMS).
 
 ## Architecture
 
